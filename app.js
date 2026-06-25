@@ -174,7 +174,7 @@ function showStatus(s, count, isSnapshot, msg) {
   document.getElementById('status-loading').style.display = s==='loading' ? '' : 'none';
   document.getElementById('status-error').style.display   = s==='error'   ? '' : 'none';
   document.getElementById('status-ok').style.display      = s==='ok'      ? '' : 'none';
-  if (s==='ok')    document.getElementById('status-ok').textContent  = isSnapshot ? '✓ Loaded '+count+' weapons from embedded snapshot (CORS blocked live feed)' : '✓ Loaded '+count+' weapons from live game data';
+  if (s==='ok')    document.getElementById('status-ok').textContent  = isSnapshot ? '✓ Loaded '+count+' weapons from local snapshot' : '✓ Loaded '+count+' weapons from live game data';
   if (s==='error') document.getElementById('error-msg').textContent = '✗ Failed to load: '+msg;
 }
 function showDataSections(show) {
@@ -201,18 +201,17 @@ async function loadData() {
   const btn = document.getElementById('btn-refresh');
   btn.disabled=true; btn.textContent='⟳ Loading…';
   try {
-    const res = await fetch(DATA_URL);
-    if (!res.ok) throw new Error('HTTP ' + res.status);
-    loadParsed(await res.text(), false);
+    const snap = await fetch(SNAPSHOT_URL);
+    if (!snap.ok) throw new Error('Snapshot HTTP ' + snap.status);
+    loadParsed(await snap.text(), true);
   } catch(e) {
-    console.warn('[DF DPS] Live fetch failed, falling back to snapshot:', e.message);
+    console.warn('[DF DPS] Snapshot load failed, trying live feed:', e.message);
     try {
-      console.warn('[DF DPS] Fetching snapshot file…');
-      const snap = await fetch(SNAPSHOT_URL);
-      if (!snap.ok) throw new Error('Snapshot HTTP ' + snap.status);
-      loadParsed(await snap.text(), true);
+      const res = await fetch(DATA_URL);
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      loadParsed(await res.text(), false);
     } catch(e2) {
-      console.error('[DF DPS] Snapshot fallback failed:', e2);
+      console.error('[DF DPS] Live fetch also failed:', e2);
       showStatus('error', 0, false, e.message);
       btn.disabled=false; btn.textContent='⟳ Refresh';
     }
