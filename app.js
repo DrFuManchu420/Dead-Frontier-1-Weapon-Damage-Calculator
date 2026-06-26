@@ -9,6 +9,129 @@ const state = {
 
 const SORT_COLS = ['name','base','sustained','unlimited'];
 
+// ── Column Filter Definitions ─────────────────────────────────────────────────
+// To add a new column filter: add an entry here and give the target <th> the matching id.
+const COL_FILTERS = {
+  type: {
+    thId:       'th-type',
+    stateKey:   'typeFilter',
+    defaultVal: 'All',
+    getOptions: () => ['All', ...TYPE_ORDER.slice(1).filter(t => new Set(state.rawWeapons.map(w => w.type)).has(t))],
+    optLabel:   v => v === 'All' ? 'All Types' : v,
+    optColor:   v => v === 'All' ? '#dc2626' : (TYPE_COLORS[v] || '#9ca3af'),
+    test:       (w, v) => w.type === v,
+  },
+  ammo: {
+    thId:       'th-ammo',
+    stateKey:   'ammoFilter',
+    defaultVal: 'All',
+    getOptions: () => ['All', 'Unlimited', 'Ammo'],
+    optLabel:   v => ({ All:'All Ammo', Unlimited:'♾ Unlimited', Ammo:'🔫 Requires Ammo' })[v],
+    optColor:   v => ({ All:'#dc2626', Unlimited:'#34d399', Ammo:'#6b7280' })[v],
+    test:       (w, v) => v === 'Unlimited' ? w.unlimited : !w.unlimited,
+  },
+  cb: {
+    thId:       'th-name',
+    stateKey:   'cbFilter',
+    defaultVal: 'All',
+    getOptions: () => ['All', 'Normal', 'Special'],
+    optLabel:   v => ({ All:'All Items', Normal:'Normal Only', Special:'★ Special' })[v],
+    optColor:   v => ({ All:'#dc2626', Normal:'#60a5fa', Special:'#f59e0b' })[v],
+    test:       (w, v) => v === 'Normal' ? !w.cbExclude : w.cbExclude,
+  },
+};
+
+// ── Column Filter UI ──────────────────────────────────────────────────────────
+let openFilterId = null;
+
+function initColFilters() {
+  for (const [id, def] of Object.entries(COL_FILTERS)) {
+    const th = document.getElementById(def.thId);
+    if (!th) continue;
+
+    const btn = document.createElement('button');
+    btn.className = 'cf-btn';
+    btn.title = 'Filter';
+    btn.innerHTML = '▾';
+    btn.addEventListener('click', e => { e.stopPropagation(); toggleColFilter(id); });
+
+    const panel = document.createElement('div');
+    panel.className = 'cf-panel';
+    panel.id = 'cfp-' + id;
+
+    th.appendChild(btn);
+    document.body.appendChild(panel); // appended to body so fixed positioning escapes overflow clipping
+  }
+}
+
+function toggleColFilter(id) {
+  if (openFilterId === id) { closeColFilter(); return; }
+  closeColFilter();
+  openFilterId = id;
+  const def    = COL_FILTERS[id];
+  const th     = document.getElementById(def.thId);
+  const btn    = th.querySelector('.cf-btn');
+  const panel  = document.getElementById('cfp-' + id);
+  const rect   = btn.getBoundingClientRect();
+
+  const current = state[def.stateKey];
+  panel.innerHTML = def.getOptions().map(v => {
+    const active = v === current;
+    const color  = def.optColor(v);
+    return `<button class="cf-opt${active ? ' active' : ''}" data-val="${v}"
+      style="${active ? `background:${color}22;color:${color};border-color:${color}44` : ''}"
+      >${def.optLabel(v)}</button>`;
+  }).join('');
+
+  panel.querySelectorAll('.cf-opt').forEach(optBtn => {
+    optBtn.addEventListener('click', e => {
+      e.stopPropagation();
+      state[def.stateKey] = optBtn.dataset.val;
+      updateColFilterIndicator(id);
+      closeColFilter();
+      applyFilters();
+    });
+  });
+
+  // position below the button, left-aligned, flip left if near right edge
+  panel.style.display = 'block';
+  const panelW = panel.offsetWidth;
+  let left = rect.left;
+  if (left + panelW > window.innerWidth - 8) left = rect.right - panelW;
+  panel.style.top  = (rect.bottom + 4) + 'px';
+  panel.style.left = Math.max(4, left) + 'px';
+
+  btn.classList.add('open');
+}
+
+function closeColFilter() {
+  if (!openFilterId) return;
+  const def   = COL_FILTERS[openFilterId];
+  const th    = document.getElementById(def.thId);
+  const btn   = th?.querySelector('.cf-btn');
+  const panel = document.getElementById('cfp-' + openFilterId);
+  if (panel)  panel.style.display = 'none';
+  if (btn)    btn.classList.remove('open');
+  openFilterId = null;
+}
+
+function updateColFilterIndicator(id) {
+  const def = COL_FILTERS[id];
+  const th  = document.getElementById(def.thId);
+  const btn = th?.querySelector('.cf-btn');
+  if (!btn) return;
+  const active = state[def.stateKey] !== def.defaultVal;
+  btn.classList.toggle('cf-active', active);
+  btn.style.color = active ? def.optColor(state[def.stateKey]) : '';
+}
+
+function updateAllColFilterIndicators() {
+  for (const id of Object.keys(COL_FILTERS)) updateColFilterIndicator(id);
+}
+
+// close on outside click
+document.addEventListener('click', () => closeColFilter());
+
 // ── Render ────────────────────────────────────────────────────────────────────
 function esc(s) {
   return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
@@ -41,21 +164,6 @@ function renderTable(data) {
       + '<td><span class="ammo-badge ' + ammoClass + '">' + ammoLabel + '</span></td>'
       + '</tr>';
   }).join('');
-}
-function buildTypeFilters() {
-  const {allWeapons, typeFilter} = state;
-  const seen  = new Set(allWeapons.map(w => w.type));
-  const types = ['All', ...TYPE_ORDER.slice(1).filter(t => seen.has(t))];
-  const container = document.getElementById('type-filters');
-  container.innerHTML = '';
-  types.forEach(t => {
-    const btn = document.createElement('button');
-    btn.className = 'btn-filter' + (t === typeFilter ? ' active' : '');
-    btn.dataset.type = t;
-    btn.textContent  = t;
-    if (t === typeFilter) { btn.style.background = TYPE_COLORS[t] || '#dc2626'; btn.style.borderColor = 'transparent'; }
-    container.appendChild(btn);
-  });
 }
 function renderSortChain() {
   const {sortKeys} = state;
@@ -92,14 +200,13 @@ function renderSortIcons() {
 
 // ── Filters ───────────────────────────────────────────────────────────────────
 function applyFilters() {
-  const {allWeapons, typeFilter, ammoFilter, cbFilter, sortKeys} = state;
+  const { allWeapons, sortKeys } = state;
   const q = document.getElementById('search').value.trim().toLowerCase();
   let data = allWeapons;
-  if (typeFilter !== 'All')       data = data.filter(w => w.type === typeFilter);
-  if (ammoFilter === 'Unlimited') data = data.filter(w => w.unlimited);
-  if (ammoFilter === 'Ammo')      data = data.filter(w => !w.unlimited);
-  if (cbFilter   === 'Normal')    data = data.filter(w => !w.cbExclude);
-  if (cbFilter   === 'Special')   data = data.filter(w => w.cbExclude);
+  for (const [id, def] of Object.entries(COL_FILTERS)) {
+    const val = state[def.stateKey];
+    if (val !== def.defaultVal) data = data.filter(w => def.test(w, val));
+  }
   if (q) data = data.filter(w => w.name.toLowerCase().includes(q));
   data = [...data].sort((a, b) => {
     for (const {col, dir} of sortKeys) {
@@ -121,35 +228,11 @@ function reEnrichAndFilter() {
   applyFilters();
 }
 
-function setType(btn) {
-  state.typeFilter = btn.dataset.type;
-  document.querySelectorAll('#type-filters .btn-filter').forEach(b => { b.classList.remove('active'); b.style.background=''; b.style.borderColor=''; });
-  btn.classList.add('active');
-  btn.style.background = TYPE_COLORS[state.typeFilter] || '#dc2626';
-  btn.style.borderColor = 'transparent';
-  applyFilters();
-}
-function setAmmo(btn) {
-  state.ammoFilter = btn.dataset.ammo;
-  document.querySelectorAll('.btn-filter[data-ammo]').forEach(b => { b.classList.remove('active'); b.style.background=''; b.style.borderColor=''; });
-  btn.classList.add('active');
-  btn.style.background = ({All:'#dc2626',Unlimited:'#34d399',Ammo:'#6b7280'})[state.ammoFilter];
-  btn.style.borderColor = 'transparent';
-  applyFilters();
-}
-function setCb(btn) {
-  state.cbFilter = btn.dataset.cb;
-  document.querySelectorAll('.btn-filter[data-cb]').forEach(b => { b.classList.remove('active'); b.style.background=''; b.style.borderColor=''; });
-  btn.classList.add('active');
-  btn.style.background = ({All:'#dc2626',Normal:'#60a5fa',Special:'#f59e0b'})[state.cbFilter];
-  btn.style.borderColor = 'transparent';
-  applyFilters();
-}
-function setReload(val)    { state.reloadStat    = +val; document.getElementById('reload-val').textContent    = val; reEnrichAndFilter(); }
-function setDex(val)       { state.dexStat       = +val; document.getElementById('dex-val').textContent       = val; reEnrichAndFilter(); }
-function setCrit(val)      { state.critStat      = +val; document.getElementById('crit-val').textContent      = val; reEnrichAndFilter(); }
-function setStrength(val)  { state.strengthStat  = +val; document.getElementById('strength-val').textContent = val; reEnrichAndFilter(); }
-function clearSort()    { state.sortKeys = [{col:'sustained',dir:'desc'}]; applyFilters(); }
+function setReload(val)   { state.reloadStat   = +val; document.getElementById('reload-val').textContent   = val; reEnrichAndFilter(); }
+function setDex(val)      { state.dexStat      = +val; document.getElementById('dex-val').textContent      = val; reEnrichAndFilter(); }
+function setCrit(val)     { state.critStat     = +val; document.getElementById('crit-val').textContent     = val; reEnrichAndFilter(); }
+function setStrength(val) { state.strengthStat = +val; document.getElementById('strength-val').textContent = val; reEnrichAndFilter(); }
+function clearSort()      { state.sortKeys = [{col:'sustained',dir:'desc'}]; applyFilters(); }
 function removeSortKey(col) {
   state.sortKeys = state.sortKeys.filter(k => k.col !== col);
   if (state.sortKeys.length === 0) state.sortKeys = [{col:'sustained',dir:'desc'}];
@@ -195,7 +278,7 @@ function loadParsed(raw, isSnapshot) {
   state.allWeapons = weapons.map(w => enrich(w, stats));
   showDataSections(true);
   showStatus('ok', weapons.length, isSnapshot);
-  buildTypeFilters();
+  updateAllColFilterIndicators();
   applyFilters();
 }
 async function loadData() {
@@ -221,12 +304,11 @@ async function loadData() {
 }
 
 // ── Event wiring ──────────────────────────────────────────────────────────────
+initColFilters();
+
 document.querySelectorAll('th.sortable').forEach(th => {
   th.addEventListener('click', e => handleSortClick(th.dataset.col, e.shiftKey));
 });
-document.querySelectorAll('.btn-filter[data-ammo]').forEach(btn => btn.addEventListener('click', () => setAmmo(btn)));
-document.querySelectorAll('.btn-filter[data-cb]').forEach(btn => btn.addEventListener('click', () => setCb(btn)));
-document.getElementById('type-filters').addEventListener('click', e => { const b = e.target.closest('.btn-filter[data-type]'); if (b) setType(b); });
 document.getElementById('chain-pills').addEventListener('click', e => { const r = e.target.closest('[data-rm-col]'); if (r) removeSortKey(r.dataset.rmCol); });
 document.querySelector('#weapons-table thead').addEventListener('click', e => { const r = e.target.closest('[data-rm-col]'); if (r) { e.stopPropagation(); removeSortKey(r.dataset.rmCol); } });
 document.getElementById('search').addEventListener('input', () => applyFilters());

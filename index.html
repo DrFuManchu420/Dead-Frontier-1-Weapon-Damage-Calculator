@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -30,20 +30,6 @@
 <!-- ── Filters ────────────────────────────────────────────────── -->
 <div id="filters" class="needs-data">
   <input id="search" placeholder="🔍 Search weapon…" autocomplete="off">
-
-  <div id="type-filters" class="filter-group"></div>
-
-  <div class="filter-group">
-    <button class="btn-filter active" data-ammo="All">All Ammo</button>
-    <button class="btn-filter"        data-ammo="Unlimited">♾ Unlimited</button>
-    <button class="btn-filter"        data-ammo="Ammo">🔫 Requires Ammo</button>
-  </div>
-
-  <div class="filter-group">
-    <button class="btn-filter active" data-cb="All">All Items</button>
-    <button class="btn-filter"        data-cb="Normal">Normal Only</button>
-    <button class="btn-filter"        data-cb="Special">★ Special</button>
-  </div>
 
   <div style="display:flex;align-items:center;gap:8px;font-size:11px;white-space:nowrap">
     <span style="color:var(--text-dim)">Reload</span>
@@ -100,11 +86,11 @@
   <table id="weapons-table">
     <thead>
       <tr>
-        <th class="sortable" data-col="name">Weapon Name<span class="sort-icon" id="si-name">↕</span></th>
-        <th>Type</th>
+        <th class="sortable" id="th-name" data-col="name">Weapon Name<span class="sort-icon" id="si-name">↕</span></th>
+        <th id="th-type">Type</th>
         <th class="sortable" data-col="base">Base DPS<span class="sort-icon" id="si-base">↕</span></th>
         <th class="sortable" data-col="sustained">Sustained<span class="sort-icon" id="si-sustained">↕</span></th>
-        <th class="sortable" data-col="unlimited">Ammo<span class="sort-icon" id="si-unlimited">↕</span></th>
+        <th class="sortable" id="th-ammo" data-col="unlimited">Ammo<span class="sort-icon" id="si-unlimited">↕</span></th>
       </tr>
     </thead>
     <tbody id="table-body"></tbody>
@@ -116,6 +102,6 @@
   DPS = damage/hit × hits/sec · Crit: baseCrit=(5+round((stat−25)/2.5))×weaponCrit, mult=1+4×(baseCrit/100) · Dex: ×0.85 floor 5 frames · Source: fairview.deadfrontier.com/dfdata
 </div>
 
-<script type="module" src="app.js?v=2"></script>
+<script type="module" src="app.js?v=3"></script>
 </body>
 </html>

@@ -264,6 +264,55 @@ kbd.hint {
   background: #0a0c10;
 }
 
+/* ── Column filter button (injected into <th>) ── */
+.cf-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-dim2);
+  cursor: pointer;
+  font-size: 10px;
+  padding: 0 3px;
+  margin-left: 4px;
+  vertical-align: middle;
+  line-height: 1;
+  border-radius: 3px;
+  transition: color .12s;
+}
+.cf-btn:hover     { color: var(--text-hi); }
+.cf-btn.open      { color: var(--text-hi); }
+.cf-btn.cf-active { font-weight: 700; }
+
+/* ── Column filter dropdown panel (appended to <body>, fixed position) ── */
+.cf-panel {
+  display: none;
+  position: fixed;
+  z-index: 200;
+  background: #1a1d26;
+  border: 1px solid var(--border2);
+  border-radius: 6px;
+  padding: 6px;
+  min-width: 140px;
+  box-shadow: 0 8px 24px #00000066;
+  display: none;
+}
+.cf-opt {
+  display: block;
+  width: 100%;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  color: var(--text-dim);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  padding: 5px 10px;
+  text-align: left;
+  cursor: pointer;
+  transition: background .1s, color .1s;
+  white-space: nowrap;
+}
+.cf-opt:hover  { background: var(--bg3); color: var(--text-hi); }
+.cf-opt.active { font-weight: 700; }
+
 /* hide sections until loaded */
 .needs-data { display: none; }
 
