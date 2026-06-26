@@ -3,41 +3,55 @@ import { enrich } from './df-formulas.js?v=2';
 
 // ── State ─────────────────────────────────────────────────────────────────────
 const state = {
-  rawWeapons:[], allWeapons:[], ammoMap:{}, typeFilter:'All', ammoFilter:'All', cbFilter:'All',
+  rawWeapons:[], allWeapons:[], ammoMap:{},
+  typeFilter: new Set(), ammoFilter: new Set(), cbFilter:'All',
   reloadStat:0, dexStat:0, critStat:0, strengthStat:25, sortKeys:[{col:'sustained',dir:'desc'}],
 };
 
 const SORT_COLS = ['name','base','sustained','unlimited'];
 
 // ── Column Filter Definitions ─────────────────────────────────────────────────
+// multi:true  → state value is a Set; empty Set = no filter applied
+// multi:false → state value is a string; defaultVal = no filter applied
 // To add a new column filter: add an entry here and give the target <th> the matching id.
 const COL_FILTERS = {
   type: {
     thId:       'th-type',
     stateKey:   'typeFilter',
-    defaultVal: 'All',
-    getOptions: () => ['All', ...TYPE_ORDER.slice(1).filter(t => new Set(state.rawWeapons.map(w => w.type)).has(t))],
-    optLabel:   v => v === 'All' ? 'All Types' : v,
-    optColor:   v => v === 'All' ? '#dc2626' : (TYPE_COLORS[v] || '#9ca3af'),
-    test:       (w, v) => w.type === v,
+    multi:      true,
+    getOptions: () => TYPE_ORDER.slice(1)
+      .filter(t => new Set(state.rawWeapons.map(w => w.type)).has(t))
+      .map(t => ({ val: t, label: t, color: TYPE_COLORS[t] || '#9ca3af' })),
+    test: (w, sel) => sel.has(w.type),
   },
   ammo: {
     thId:       'th-ammo',
     stateKey:   'ammoFilter',
-    defaultVal: 'All',
-    getOptions: () => ['All', 'Unlimited', 'Ammo'],
-    optLabel:   v => ({ All:'All Ammo', Unlimited:'♾ Unlimited', Ammo:'🔫 Requires Ammo' })[v],
-    optColor:   v => ({ All:'#dc2626', Unlimited:'#34d399', Ammo:'#6b7280' })[v],
-    test:       (w, v) => v === 'Unlimited' ? w.unlimited : !w.unlimited,
+    multi:      true,
+    getOptions: () => {
+      const codes = [...new Set(
+        state.rawWeapons.filter(w => !w.unlimited && w.ammoType).map(w => w.ammoType)
+      )].sort((a, b) => (state.ammoMap[a] || a).localeCompare(state.ammoMap[b] || b));
+      return [
+        { val: '__unlimited__', label: '♾ Unlimited',   color: '#34d399' },
+        ...codes.map(c => ({ val: c, label: state.ammoMap[c] || c, color: '#9ca3af' })),
+      ];
+    },
+    test: (w, sel) =>
+      (sel.has('__unlimited__') && w.unlimited) ||
+      (!w.unlimited && sel.has(w.ammoType)),
   },
   cb: {
     thId:       'th-name',
     stateKey:   'cbFilter',
+    multi:      false,
     defaultVal: 'All',
-    getOptions: () => ['All', 'Normal', 'Special'],
-    optLabel:   v => ({ All:'All Items', Normal:'Normal Only', Special:'★ Special' })[v],
-    optColor:   v => ({ All:'#dc2626', Normal:'#60a5fa', Special:'#f59e0b' })[v],
-    test:       (w, v) => v === 'Normal' ? !w.cbExclude : w.cbExclude,
+    getOptions: () => [
+      { val: 'All',     label: 'All Items',   color: '#dc2626' },
+      { val: 'Normal',  label: 'Normal Only',  color: '#60a5fa' },
+      { val: 'Special', label: '★ Special',    color: '#f59e0b' },
+    ],
+    test: (w, v) => v === 'Normal' ? !w.cbExclude : w.cbExclude,
   },
 };
 
@@ -58,9 +72,11 @@ function initColFilters() {
     const panel = document.createElement('div');
     panel.className = 'cf-panel';
     panel.id = 'cfp-' + id;
+    // stop outside-click handler from firing when clicking inside the panel
+    panel.addEventListener('click', e => e.stopPropagation());
 
     th.appendChild(btn);
-    document.body.appendChild(panel); // appended to body so fixed positioning escapes overflow clipping
+    document.body.appendChild(panel);
   }
 }
 
@@ -68,40 +84,77 @@ function toggleColFilter(id) {
   if (openFilterId === id) { closeColFilter(); return; }
   closeColFilter();
   openFilterId = id;
-  const def    = COL_FILTERS[id];
-  const th     = document.getElementById(def.thId);
-  const btn    = th.querySelector('.cf-btn');
-  const panel  = document.getElementById('cfp-' + id);
+
+  const def   = COL_FILTERS[id];
+  const th    = document.getElementById(def.thId);
+  const btn   = th.querySelector('.cf-btn');
+  const panel = document.getElementById('cfp-' + id);
+
+  rebuildPanelOptions(id, def, panel);
+
   const rect   = btn.getBoundingClientRect();
-
-  const current = state[def.stateKey];
-  panel.innerHTML = def.getOptions().map(v => {
-    const active = v === current;
-    const color  = def.optColor(v);
-    return `<button class="cf-opt${active ? ' active' : ''}" data-val="${v}"
-      style="${active ? `background:${color}22;color:${color};border-color:${color}44` : ''}"
-      >${def.optLabel(v)}</button>`;
-  }).join('');
-
-  panel.querySelectorAll('.cf-opt').forEach(optBtn => {
-    optBtn.addEventListener('click', e => {
-      e.stopPropagation();
-      state[def.stateKey] = optBtn.dataset.val;
-      updateColFilterIndicator(id);
-      closeColFilter();
-      applyFilters();
-    });
-  });
-
-  // position below the button, left-aligned, flip left if near right edge
   panel.style.display = 'block';
   const panelW = panel.offsetWidth;
-  let left = rect.left;
-  if (left + panelW > window.innerWidth - 8) left = rect.right - panelW;
-  panel.style.top  = (rect.bottom + 4) + 'px';
+  let left = rect.left + window.scrollX;
+  if (rect.left + panelW > window.innerWidth - 8) left = rect.right + window.scrollX - panelW;
+  panel.style.top  = (rect.bottom + window.scrollY + 4) + 'px';
   panel.style.left = Math.max(4, left) + 'px';
 
   btn.classList.add('open');
+}
+
+function rebuildPanelOptions(id, def, panel) {
+  const options = def.getOptions();
+
+  if (def.multi) {
+    const sel = state[def.stateKey];
+    panel.innerHTML =
+      options.map(({ val, label, color }) => {
+        const checked = sel.has(val);
+        return `<button class="cf-opt${checked ? ' active' : ''}" data-val="${val}"
+          style="${checked ? `color:${color}` : ''}"
+          ><span class="cf-check">${checked ? '✓' : ''}</span>${label}</button>`;
+      }).join('')
+      + (sel.size > 0
+        ? '<div class="cf-footer"><button class="cf-clear">Clear selection</button></div>'
+        : '');
+
+    panel.querySelectorAll('.cf-opt').forEach(optBtn => {
+      optBtn.addEventListener('click', () => {
+        const val = optBtn.dataset.val;
+        sel.has(val) ? sel.delete(val) : sel.add(val);
+        updateColFilterIndicator(id);
+        rebuildPanelOptions(id, def, panel); // refresh checkmarks + clear button
+        applyFilters();
+      });
+    });
+
+    const clearBtn = panel.querySelector('.cf-clear');
+    if (clearBtn) clearBtn.addEventListener('click', () => {
+      sel.clear();
+      updateColFilterIndicator(id);
+      rebuildPanelOptions(id, def, panel);
+      applyFilters();
+    });
+
+  } else {
+    const current = state[def.stateKey];
+    panel.innerHTML = options.map(({ val, label, color }) => {
+      const active = val === current;
+      return `<button class="cf-opt${active ? ' active' : ''}" data-val="${val}"
+        style="${active ? `color:${color}` : ''}"
+        >${label}</button>`;
+    }).join('');
+
+    panel.querySelectorAll('.cf-opt').forEach(optBtn => {
+      optBtn.addEventListener('click', () => {
+        state[def.stateKey] = optBtn.dataset.val;
+        updateColFilterIndicator(id);
+        closeColFilter();
+        applyFilters();
+      });
+    });
+  }
 }
 
 function closeColFilter() {
@@ -110,8 +163,8 @@ function closeColFilter() {
   const th    = document.getElementById(def.thId);
   const btn   = th?.querySelector('.cf-btn');
   const panel = document.getElementById('cfp-' + openFilterId);
-  if (panel)  panel.style.display = 'none';
-  if (btn)    btn.classList.remove('open');
+  if (panel) panel.style.display = 'none';
+  if (btn)   btn.classList.remove('open');
   openFilterId = null;
 }
 
@@ -120,16 +173,29 @@ function updateColFilterIndicator(id) {
   const th  = document.getElementById(def.thId);
   const btn = th?.querySelector('.cf-btn');
   if (!btn) return;
-  const active = state[def.stateKey] !== def.defaultVal;
-  btn.classList.toggle('cf-active', active);
-  btn.style.color = active ? def.optColor(state[def.stateKey]) : '';
+
+  if (def.multi) {
+    const count = state[def.stateKey].size;
+    btn.classList.toggle('cf-active', count > 0);
+    btn.innerHTML = count > 0
+      ? `▾ <span class="cf-count">${count}</span>`
+      : '▾';
+  } else {
+    const active = state[def.stateKey] !== def.defaultVal;
+    btn.classList.toggle('cf-active', active);
+    if (active) {
+      const opt = def.getOptions().find(o => o.val === state[def.stateKey]);
+      btn.style.color = opt?.color || '';
+    } else {
+      btn.style.color = '';
+    }
+  }
 }
 
 function updateAllColFilterIndicators() {
   for (const id of Object.keys(COL_FILTERS)) updateColFilterIndicator(id);
 }
 
-// close on outside click
 document.addEventListener('click', () => closeColFilter());
 
 // ── Render ────────────────────────────────────────────────────────────────────
@@ -203,10 +269,17 @@ function applyFilters() {
   const { allWeapons, sortKeys } = state;
   const q = document.getElementById('search').value.trim().toLowerCase();
   let data = allWeapons;
+
   for (const [id, def] of Object.entries(COL_FILTERS)) {
-    const val = state[def.stateKey];
-    if (val !== def.defaultVal) data = data.filter(w => def.test(w, val));
+    if (def.multi) {
+      const sel = state[def.stateKey];
+      if (sel.size > 0) data = data.filter(w => def.test(w, sel));
+    } else {
+      const val = state[def.stateKey];
+      if (val !== def.defaultVal) data = data.filter(w => def.test(w, val));
+    }
   }
+
   if (q) data = data.filter(w => w.name.toLowerCase().includes(q));
   data = [...data].sort((a, b) => {
     for (const {col, dir} of sortKeys) {
