@@ -25,12 +25,21 @@ export function calcStrengthBoost(strengthStat, isMelee) {
   return 1 + Math.min(Math.max(0, strengthStat - 25), 75) / 300;
 }
 
-export function calcBurstDPS(w, strengthStat = 25) {
-  const st  = actualShotTime(w.shot_time, 0);
-  const sb  = calcStrengthBoost(strengthStat, w.melee || w.chainsaw);
-  return w.dmg * sb * (60 / st);
+// Raw DPS: weapon stats only, no player bonuses applied
+export function calcRawDPS(w) {
+  const st = actualShotTime(w.shot_time, 0);
+  return w.dmg * (60 / st);
 }
 
+// Burst DPS: Str + Dex + Crit applied, no reload cycle
+export function calcBurstDPS(w, { dexStat, critStat, strengthStat = 25 }) {
+  const st = actualShotTime(w.shot_time, dexStat);
+  const cm = calcCritMult(w.critRaw, w.rawType, critStat);
+  const sb = calcStrengthBoost(strengthStat, w.melee || w.chainsaw);
+  return w.dmg * sb * cm * (60 / st);
+}
+
+// Sustained DPS: Str + Dex + Crit + reload cycle
 export function calcSustainedDPS(w, { dexStat, critStat, reloadStat, strengthStat = 25 }) {
   const st = actualShotTime(w.shot_time, dexStat);
   const cm = calcCritMult(w.critRaw, w.rawType, critStat);
@@ -46,7 +55,8 @@ export function enrich(w, stats) {
   return {
     ...w,
     unlimited: w.melee || w.chainsaw || w.noAmmo,
-    base:      calcBurstDPS(w, stats.strengthStat),
+    raw:       calcRawDPS(w),
+    burst:     calcBurstDPS(w, stats),
     sustained: calcSustainedDPS(w, stats),
   };
 }

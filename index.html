@@ -74,8 +74,9 @@
 
 <!-- ── Legend ─────────────────────────────────────────────────── -->
 <div id="legend" class="needs-data">
-  <div><span class="legend-key">Base DPS</span><span class="legend-desc"> — Burst, no bonuses, no reload penalty</span></div>
-  <div><span class="legend-key">Sustained</span><span class="legend-desc"> — Includes reload + spin delay, scaled by Reload/Dex/Crit sliders</span></div>
+  <div><span class="legend-key">Raw DPS</span><span class="legend-desc"> — No bonuses, no reload penalty</span></div>
+  <div><span class="legend-key">Burst DPS</span><span class="legend-desc"> — Str + Dex + Crit applied, no reload penalty</span></div>
+  <div><span class="legend-key">Sustained DPS</span><span class="legend-desc"> — Str + Dex + Crit + reload cycle</span></div>
   <div><span class="legend-key">Dex</span><span class="legend-desc"> — 0.15% fire rate per point, capped at 100 pts (−15%, floor 5 frames)</span></div>
   <div><span class="legend-key">Crit</span><span class="legend-desc"> — baseCrit = (5 + round((stat−25)/2.5)) × weaponCrit, capped 80; mult = 1 + 4×(baseCrit/100)</span></div>
   <div><span class="legend-key">Str</span><span class="legend-desc"> — melee/chainsaw only · +0.3333% damage per point above 25, capped +25% at 100</span></div>
@@ -88,8 +89,9 @@
       <tr>
         <th class="sortable" id="th-name" data-col="name">Weapon Name<span class="sort-icon" id="si-name">↕</span></th>
         <th id="th-type">Type</th>
-        <th class="sortable" data-col="base">Base DPS<span class="sort-icon" id="si-base">↕</span></th>
-        <th class="sortable" data-col="sustained">Sustained<span class="sort-icon" id="si-sustained">↕</span></th>
+        <th class="sortable" data-col="raw">Raw DPS<span class="sort-icon" id="si-raw">↕</span></th>
+        <th class="sortable" data-col="burst">Burst DPS<span class="sort-icon" id="si-burst">↕</span></th>
+        <th class="sortable" data-col="sustained">Sustained DPS<span class="sort-icon" id="si-sustained">↕</span></th>
         <th class="sortable" id="th-ammo" data-col="unlimited">Ammo<span class="sort-icon" id="si-unlimited">↕</span></th>
       </tr>
     </thead>
@@ -102,6 +104,6 @@
   DPS = damage/hit × hits/sec · Crit: baseCrit=(5+round((stat−25)/2.5))×weaponCrit, mult=1+4×(baseCrit/100) · Dex: ×0.85 floor 5 frames · Source: fairview.deadfrontier.com/dfdata
 </div>
 
-<script type="module" src="app.js?v=4"></script>
+<script type="module" src="app.js?v=5"></script>
 </body>
 </html>

@@ -1,5 +1,5 @@
 import { DATA_URL, SNAPSHOT_URL, TYPE_ORDER, TYPE_COLORS, parseAllStats } from './df-data.js?v=2';
-import { enrich } from './df-formulas.js?v=2';
+import { enrich } from './df-formulas.js?v=3';
 
 // ── State ─────────────────────────────────────────────────────────────────────
 const state = {
@@ -8,7 +8,7 @@ const state = {
   reloadStat:0, dexStat:0, critStat:0, strengthStat:25, sortKeys:[{col:'sustained',dir:'desc'}],
 };
 
-const SORT_COLS = ['name','base','sustained','unlimited'];
+const SORT_COLS = ['name','raw','burst','sustained','unlimited'];
 
 // ── Column Filter Definitions ─────────────────────────────────────────────────
 // multi:true  → state value is a Set; empty Set = no filter applied
@@ -212,11 +212,12 @@ function dpsCell(val, max, color) {
 function renderTable(data) {
   const tbody = document.getElementById('table-body');
   if (data.length === 0) {
-    tbody.innerHTML = '<tr id="empty-row"><td colspan="5">No weapons match your filters.</td></tr>';
+    tbody.innerHTML = '<tr id="empty-row"><td colspan="6">No weapons match your filters.</td></tr>';
     return;
   }
-  const maxBase = Math.max(1, ...data.map(w => w.base));
-  const maxSust = Math.max(1, ...data.map(w => w.sustained));
+  const maxRaw   = Math.max(1, ...data.map(w => w.raw));
+  const maxBurst = Math.max(1, ...data.map(w => w.burst));
+  const maxSust  = Math.max(1, ...data.map(w => w.sustained));
   tbody.innerHTML = data.map(w => {
     const tc = TYPE_COLORS[w.type] || '#9ca3af';
     const ammoClass = w.noAmmo ? 'ammo-noammo' : w.unlimited ? 'ammo-unlimited' : 'ammo-required';
@@ -225,8 +226,9 @@ function renderTable(data) {
     return '<tr>'
       + '<td class="td-name">' + esc(w.name) + '</td>'
       + '<td><span class="type-badge" style="background:' + tc + '22;color:' + tc + ';border:1px solid ' + tc + '44">' + esc(w.type) + '</span></td>'
-      + dpsCell(w.base, maxBase, '#e5e7eb')
-      + dpsCell(w.sustained, maxSust, '#a78bfa')
+      + dpsCell(w.raw,       maxRaw,   '#6b7280')
+      + dpsCell(w.burst,     maxBurst, '#e5e7eb')
+      + dpsCell(w.sustained, maxSust,  '#a78bfa')
       + '<td><span class="ammo-badge ' + ammoClass + '">' + ammoLabel + '</span></td>'
       + '</tr>';
   }).join('');
