@@ -19,26 +19,34 @@ export function calcReloadFrames(weaponReload, stat) {
   return 15 + (124 - Math.max(0, Math.min(124, stat))) * weaponReload / 100;
 }
 
-export function calcBurstDPS(w) {
-  const st = actualShotTime(w.shot_time, 0);
-  return w.dmg * (60 / st);
+// +0.3333%/pt beyond 25, capped at +25% at 100 — melee/chainsaw only
+export function calcStrengthBoost(strengthStat, isMelee) {
+  if (!isMelee) return 1.0;
+  return 1 + Math.min(Math.max(0, strengthStat - 25), 75) / 300;
 }
 
-export function calcSustainedDPS(w, { dexStat, critStat, reloadStat }) {
+export function calcBurstDPS(w, strengthStat = 25) {
+  const st  = actualShotTime(w.shot_time, 0);
+  const sb  = calcStrengthBoost(strengthStat, w.melee || w.chainsaw);
+  return w.dmg * sb * (60 / st);
+}
+
+export function calcSustainedDPS(w, { dexStat, critStat, reloadStat, strengthStat = 25 }) {
   const st = actualShotTime(w.shot_time, dexStat);
   const cm = calcCritMult(w.critRaw, w.rawType, critStat);
+  const sb = calcStrengthBoost(strengthStat, w.melee || w.chainsaw);
   if (w.magShots > 0) {
     const cycleTime = w.magShots * st + calcReloadFrames(w.reloadType, reloadStat) + w.spinDelay;
-    return (w.magDmg * cm / cycleTime) * 60;
+    return (w.magDmg * sb * cm / cycleTime) * 60;
   }
-  return w.dmg * cm * (60 / st);
+  return w.dmg * sb * cm * (60 / st);
 }
 
 export function enrich(w, stats) {
   return {
     ...w,
     unlimited: w.melee || w.chainsaw || w.noAmmo,
-    base:      calcBurstDPS(w),
+    base:      calcBurstDPS(w, stats.strengthStat),
     sustained: calcSustainedDPS(w, stats),
   };
 }

@@ -66,6 +66,13 @@
     <span id="crit-val" style="color:var(--amber);width:24px;text-align:right">0</span>
   </div>
 
+  <div style="display:flex;align-items:center;gap:8px;font-size:11px;white-space:nowrap">
+    <span style="color:var(--text-dim)">Str</span>
+    <input type="range" id="strength-slider" min="25" max="100" value="25"
+           style="width:90px;accent-color:var(--green)">
+    <span id="strength-val" style="color:var(--green);width:24px;text-align:right">25</span>
+  </div>
+
   <div id="filter-meta">
     <div id="count-label">— weapons</div>
     <div id="sort-hint">Click to sort · <kbd class="hint">Shift+Click</kbd> tiebreaker</div>
@@ -85,6 +92,7 @@
   <div><span class="legend-key">Sustained</span><span class="legend-desc"> — Includes reload + spin delay, scaled by Reload/Dex/Crit sliders</span></div>
   <div><span class="legend-key">Dex</span><span class="legend-desc"> — 0.15% fire rate per point, capped at 100 pts (−15%, floor 5 frames)</span></div>
   <div><span class="legend-key">Crit</span><span class="legend-desc"> — baseCrit = (5 + round((stat−25)/2.5)) × weaponCrit, capped 80; mult = 1 + 4×(baseCrit/100)</span></div>
+  <div><span class="legend-key">Str</span><span class="legend-desc"> — melee/chainsaw only · +0.3333% damage per point above 25, capped +25% at 100</span></div>
 </div>
 
 <!-- ── Table ──────────────────────────────────────────────────── -->

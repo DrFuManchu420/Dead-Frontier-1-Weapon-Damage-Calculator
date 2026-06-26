@@ -5,7 +5,7 @@ import { enrich } from './df-formulas.js';
 // ── State ─────────────────────────────────────────────────────────────────────
 const state = {
   rawWeapons:[], allWeapons:[], typeFilter:'All', ammoFilter:'All', cbFilter:'All',
-  reloadStat:0, dexStat:0, critStat:0, sortKeys:[{col:'sustained',dir:'desc'}],
+  reloadStat:0, dexStat:0, critStat:0, strengthStat:25, sortKeys:[{col:'sustained',dir:'desc'}],
 };
 
 const SORT_COLS = ['name','base','sustained','unlimited'];
@@ -116,7 +116,7 @@ function applyFilters() {
 }
 
 function reEnrichAndFilter() {
-  const stats = { dexStat: state.dexStat, critStat: state.critStat, reloadStat: state.reloadStat };
+  const stats = { dexStat: state.dexStat, critStat: state.critStat, reloadStat: state.reloadStat, strengthStat: state.strengthStat };
   state.allWeapons = state.rawWeapons.map(w => enrich(w, stats));
   applyFilters();
 }
@@ -145,9 +145,10 @@ function setCb(btn) {
   btn.style.borderColor = 'transparent';
   applyFilters();
 }
-function setReload(val) { state.reloadStat = +val; document.getElementById('reload-val').textContent = val; reEnrichAndFilter(); }
-function setDex(val)    { state.dexStat    = +val; document.getElementById('dex-val').textContent    = val; reEnrichAndFilter(); }
-function setCrit(val)   { state.critStat   = +val; document.getElementById('crit-val').textContent   = val; reEnrichAndFilter(); }
+function setReload(val)    { state.reloadStat    = +val; document.getElementById('reload-val').textContent    = val; reEnrichAndFilter(); }
+function setDex(val)       { state.dexStat       = +val; document.getElementById('dex-val').textContent       = val; reEnrichAndFilter(); }
+function setCrit(val)      { state.critStat      = +val; document.getElementById('crit-val').textContent      = val; reEnrichAndFilter(); }
+function setStrength(val)  { state.strengthStat  = +val; document.getElementById('strength-val').textContent = val; reEnrichAndFilter(); }
 function clearSort()    { state.sortKeys = [{col:'sustained',dir:'desc'}]; applyFilters(); }
 function removeSortKey(col) {
   state.sortKeys = state.sortKeys.filter(k => k.col !== col);
@@ -188,7 +189,7 @@ function showDataSections(show) {
 function loadParsed(raw, isSnapshot) {
   const parsed = parseAllStats(raw);
   if (parsed.length === 0) throw new Error('No weapons parsed — unexpected response format.');
-  const stats = { dexStat: state.dexStat, critStat: state.critStat, reloadStat: state.reloadStat };
+  const stats = { dexStat: state.dexStat, critStat: state.critStat, reloadStat: state.reloadStat, strengthStat: state.strengthStat };
   state.rawWeapons = parsed;
   state.allWeapons = parsed.map(w => enrich(w, stats));
   showDataSections(true);
@@ -231,6 +232,7 @@ document.getElementById('search').addEventListener('input', () => applyFilters()
 document.getElementById('reload-slider').addEventListener('input', e => setReload(e.target.value));
 document.getElementById('dex-slider').addEventListener('input', e => setDex(e.target.value));
 document.getElementById('crit-slider').addEventListener('input', e => setCrit(e.target.value));
+document.getElementById('strength-slider').addEventListener('input', e => setStrength(e.target.value));
 document.getElementById('btn-refresh').addEventListener('click', () => loadData());
 document.getElementById('btn-retry').addEventListener('click', () => loadData());
 document.getElementById('btn-clear-sort').addEventListener('click', () => clearSort());
