@@ -50,6 +50,10 @@ class ItemFactory {
   }
 }
 
+class AmmoFactory extends ItemFactory {
+  static canBuild(raw) { return raw._prefix === 'ammo'; }
+}
+
 export class WeaponFactory extends ItemFactory {
   static FIELDS = {
     ...ItemFactory.FIELDS,
@@ -66,6 +70,7 @@ export class WeaponFactory extends ItemFactory {
     no_ammo:         { parse: v => v === '1',                      def: false },
     cb_exclude:      { parse: v => v === '1',                      def: false },
     pro_type:        { parse: v => v,                              def: ''    },
+    ammo_type:       { parse: v => v,                              def: ''    },
   };
 
   static canBuild(raw) { return raw._prefix === 'weapon'; }
@@ -89,12 +94,10 @@ export class WeaponFactory extends ItemFactory {
       spinDelay:  item.spin_delay,
       noAmmo:     item.no_ammo,
       cbExclude:  item.cb_exclude,
+      ammoType:   item.ammo_type,
     };
   }
 }
-
-// Registry — add new factories here to support additional item types
-const ITEM_FACTORIES = [WeaponFactory];
 
 export function parseAllStats(raw) {
   raw = stripHtmlEntities(raw);
@@ -114,12 +117,16 @@ export function parseAllStats(raw) {
     groups[gk][m[3]] = val;
   }
 
-  const items = [];
+  const weapons = [];
+  const ammoMap = {};  // code → display name
   for (const raw of Object.values(groups)) {
-    const Factory = ITEM_FACTORIES.find(F => F.canBuild(raw));
-    if (!Factory) continue;
-    const item = Factory.build(raw);
-    if (item.name && item.dmg !== 0) items.push(item);
+    if (AmmoFactory.canBuild(raw)) {
+      const a = AmmoFactory.build(raw);
+      if (a.code && a.name) ammoMap[a.code] = a.name;
+    } else if (WeaponFactory.canBuild(raw)) {
+      const w = WeaponFactory.build(raw);
+      if (w.name && w.dmg !== 0) weapons.push(w);
+    }
   }
-  return items;
+  return { weapons, ammoMap };
 }

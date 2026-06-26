@@ -1,10 +1,9 @@
-import { DATA_URL, SNAPSHOT_URL, TYPE_ORDER, TYPE_COLORS } from './df-data.js';
-import { parseAllStats } from './df-data.js';
-import { enrich } from './df-formulas.js';
+import { DATA_URL, SNAPSHOT_URL, TYPE_ORDER, TYPE_COLORS, parseAllStats } from './df-data.js?v=2';
+import { enrich } from './df-formulas.js?v=2';
 
 // ── State ─────────────────────────────────────────────────────────────────────
 const state = {
-  rawWeapons:[], allWeapons:[], typeFilter:'All', ammoFilter:'All', cbFilter:'All',
+  rawWeapons:[], allWeapons:[], ammoMap:{}, typeFilter:'All', ammoFilter:'All', cbFilter:'All',
   reloadStat:0, dexStat:0, critStat:0, strengthStat:25, sortKeys:[{col:'sustained',dir:'desc'}],
 };
 
@@ -32,7 +31,8 @@ function renderTable(data) {
   tbody.innerHTML = data.map(w => {
     const tc = TYPE_COLORS[w.type] || '#9ca3af';
     const ammoClass = w.noAmmo ? 'ammo-noammo' : w.unlimited ? 'ammo-unlimited' : 'ammo-required';
-    const ammoLabel = w.noAmmo ? '♾ No Ammo' : w.unlimited ? '♾ Unlimited' : '🔫 Ammo';
+    const ammoName  = (!w.unlimited && w.ammoType) ? (state.ammoMap[w.ammoType] || w.ammoType) : null;
+    const ammoLabel = w.noAmmo ? '♾ No Ammo' : w.unlimited ? '♾ Unlimited' : '🔫 ' + (ammoName || 'Ammo');
     return '<tr>'
       + '<td class="td-name">' + esc(w.name) + '</td>'
       + '<td><span class="type-badge" style="background:' + tc + '22;color:' + tc + ';border:1px solid ' + tc + '44">' + esc(w.type) + '</span></td>'
@@ -187,13 +187,14 @@ function showDataSections(show) {
   if (show) { btn.disabled=false; btn.textContent='⟳ Refresh'; }
 }
 function loadParsed(raw, isSnapshot) {
-  const parsed = parseAllStats(raw);
-  if (parsed.length === 0) throw new Error('No weapons parsed — unexpected response format.');
+  const { weapons, ammoMap } = parseAllStats(raw);
+  if (weapons.length === 0) throw new Error('No weapons parsed — unexpected response format.');
   const stats = { dexStat: state.dexStat, critStat: state.critStat, reloadStat: state.reloadStat, strengthStat: state.strengthStat };
-  state.rawWeapons = parsed;
-  state.allWeapons = parsed.map(w => enrich(w, stats));
+  state.ammoMap    = ammoMap;
+  state.rawWeapons = weapons;
+  state.allWeapons = weapons.map(w => enrich(w, stats));
   showDataSections(true);
-  showStatus('ok', parsed.length, isSnapshot);
+  showStatus('ok', weapons.length, isSnapshot);
   buildTypeFilters();
   applyFilters();
 }
