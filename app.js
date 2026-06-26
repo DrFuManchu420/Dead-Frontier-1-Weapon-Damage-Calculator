@@ -5,7 +5,7 @@ import { enrich } from './df-formulas.js?v=3';
 const state = {
   rawWeapons:[], allWeapons:[], ammoMap:{},
   typeFilter: new Set(), ammoFilter: new Set(), cbFilter:'All',
-  reloadStat:0, dexStat:0, critStat:0, strengthStat:25, sortKeys:[{col:'sustained',dir:'desc'}],
+  reloadStat:25, dexStat:25, critStat:25, strengthStat:25, sortKeys:[{col:'sustained',dir:'desc'}],
 };
 
 const SORT_COLS = ['name','raw','burst','sustained','unlimited'];
