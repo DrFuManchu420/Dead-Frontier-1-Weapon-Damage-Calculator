@@ -2,7 +2,7 @@
 // All functions are pure — no DOM or state references.
 
 export function actualShotTime(theoretical, dex) {
-  const reduced   = dex > 0 ? theoretical * (1 - Math.min(dex, 100) * 0.0015) : theoretical;
+  const reduced = dex > 0 ? theoretical * (1 - Math.min(dex, 100) * 0.0015) : theoretical;
   return Math.min(theoretical, Math.max(5, reduced));
 }
 
@@ -35,7 +35,7 @@ export function calcRawDPS(w) {
 export function calcBurstDPS(w, { dexStat, critStat, strengthStat = 25 }) {
   const st = actualShotTime(w.shot_time, dexStat);
   const cm = calcCritMult(w.critRaw, w.rawType, critStat);
-  const sb = calcStrengthBoost(strengthStat, w.melee || w.chainsaw);
+  const sb = calcStrengthBoost(strengthStat, w.melee);
   return w.dmg * sb * cm * (60 / st);
 }
 
@@ -43,7 +43,7 @@ export function calcBurstDPS(w, { dexStat, critStat, strengthStat = 25 }) {
 export function calcSustainedDPS(w, { dexStat, critStat, reloadStat, strengthStat = 25 }) {
   const st = actualShotTime(w.shot_time, dexStat);
   const cm = calcCritMult(w.critRaw, w.rawType, critStat);
-  const sb = calcStrengthBoost(strengthStat, w.melee || w.chainsaw);
+  const sb = calcStrengthBoost(strengthStat, w.melee);
   if (w.magShots > 0) {
     const cycleTime = w.magShots * st + calcReloadFrames(w.reloadType, reloadStat) + w.spinDelay;
     return (w.magDmg * sb * cm / cycleTime) * 60;
@@ -54,7 +54,7 @@ export function calcSustainedDPS(w, { dexStat, critStat, reloadStat, strengthSta
 export function enrich(w, stats) {
   return {
     ...w,
-    unlimited: w.melee || w.chainsaw || w.noAmmo,
+    unlimited: w.melee || w.noAmmo,
     raw:       calcRawDPS(w),
     burst:     calcBurstDPS(w, stats),
     sustained: calcSustainedDPS(w, stats),
